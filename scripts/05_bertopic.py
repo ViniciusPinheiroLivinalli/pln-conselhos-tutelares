@@ -2,6 +2,8 @@
 
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
+import pandas as pd
+df = pd.read_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_preprocessado.csv", encoding="utf-8")
 
 textos_brutos = df["texto"].tolist()
 

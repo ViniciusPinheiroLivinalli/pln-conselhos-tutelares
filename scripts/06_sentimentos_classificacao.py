@@ -2,6 +2,8 @@
 
 # --- Parte A: Análise de sentimentos com BERTimbau ---
 from transformers import pipeline
+import pandas as pd
+df = pd.read_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_preprocessado.csv", encoding="utf-8")
 
 # Modelo de sentimentos em português
 sentimentos = pipeline(

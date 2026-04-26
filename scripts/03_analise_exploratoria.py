@@ -5,6 +5,8 @@ import seaborn as sns
 from wordcloud import WordCloud
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
+import pandas as pd
+df = pd.read_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_preprocessado.csv", encoding="utf-8")
 
 # Nuvem de palavras geral
 todos_tokens = " ".join(df["texto_limpo"])
