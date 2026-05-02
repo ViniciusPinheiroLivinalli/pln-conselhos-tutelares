@@ -9,7 +9,7 @@ import nltk
 nltk.download("stopwords")
 from nltk.corpus import stopwords
 import pandas as pd
-df = pd.read_csv("dados/corpus_organizado.csv", encoding="utf-8")
+df = pd.read_csv("dados/corpus_anonimizado.csv", encoding="utf-8")
 
 nlp = spacy.load("pt_core_news_lg")
 stop_pt = set(stopwords.words("portuguese"))

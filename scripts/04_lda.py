@@ -22,8 +22,15 @@ corpus_bow = [dicionario.doc2bow(texto) for texto in textos]
 # precisa estar dentro deste bloco
 if __name__ == '__main__':
 
+    import os
+    os.makedirs(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos", exist_ok=True)
+
+    lda_final.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_modelo")
+    dicionario.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_dicionario")
+    print("Modelos LDA salvos.")
+
     # Testar diferentes números de tópicos
-    for n in [3, 4, 5]:
+    for n in [3, 4, 5, 6, 7, 8, 9, 10]:
         lda = models.LdaModel(
             corpus_bow,
             num_topics=n,
