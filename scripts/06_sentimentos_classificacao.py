@@ -1,44 +1,61 @@
-from sklearn.model_selection import train_test_split
+import pandas as pd
+from transformers import pipeline
 from sklearn.svm import SVC
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
-import pandas as pd
+import os
 
-# Carregar apenas os documentos rotulados manualmente
-df_rotulado = pd.read_csv(r"...\dados\corpus_rotulado.csv", encoding="utf-8")
+df = pd.read_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_preprocessado.csv", encoding="utf-8")
 
-X = df_rotulado["texto_limpo"]
-y = df_rotulado["gravidade"]
-
-# Divisão 80/10/10
-X_train, X_temp, y_train, y_temp = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-X_val, X_test, y_val, y_test = train_test_split(
-    X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
+# ── Parte A: Análise de sentimentos ──────────────────────────────────────────
+print("Carregando modelo de sentimentos...")
+sentimentos = pipeline(
+    "text-classification",
+    model="lxyuan/distilbert-base-multilingual-cased-sentiments-student",
+    top_k=1
 )
 
-print(f"Treino: {len(X_train)} | Validação: {len(X_val)} | Teste: {len(X_test)}")
+def analisar_sentimento(texto):
+    resultado = sentimentos(texto[:512])[0][0]
+    return resultado["label"], round(resultado["score"], 3)
 
-# Treinar
-vec = TfidfVectorizer(max_features=1000)
+df[["sentimento", "confianca_sentimento"]] = df["texto"].apply(
+    lambda t: pd.Series(analisar_sentimento(t))
+)
+
+print("\n--- Sentimentos ---")
+print(df[["id", "gravidade", "sentimento", "confianca_sentimento"]].head(10))
+
+# ── Parte B: Classificação de gravidade com SVM ───────────────────────────────
+print("\nTreinando classificador de gravidade...")
+
+X = df["texto_limpo"]
+y = df["gravidade"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
+)
+
+vec = TfidfVectorizer(max_features=500)
 X_train_tfidf = vec.fit_transform(X_train)
-X_val_tfidf   = vec.transform(X_val)
 X_test_tfidf  = vec.transform(X_test)
 
 svm = SVC(kernel="linear", random_state=42)
 svm.fit(X_train_tfidf, y_train)
+y_pred = svm.predict(X_test_tfidf)
 
-# Avaliar no conjunto de validação (para ajustar parâmetros)
-print("\n--- Validação ---")
-print(classification_report(y_val, svm.predict(X_val_tfidf)))
+print("\n--- Relatório de Classificação (SVM) ---")
+print(classification_report(y_test, y_pred))
+print("Nota: métricas baixas são esperadas com 30 registros fictícios.")
 
-# Avaliar no conjunto de teste (apenas uma vez, no final)
-print("\n--- Teste Final ---")
-print(classification_report(y_test, svm.predict(X_test_tfidf)))
+# ── Salvar modelos ────────────────────────────────────────────────────────────
+os.makedirs(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos", exist_ok=True)
+joblib.dump(svm, r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\svm_gravidade.pkl")
+joblib.dump(vec, r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\tfidf_vectorizer.pkl")
+print("\nModelos SVM salvos em modelos/")
 
-# Salvar modelos
-joblib.dump(svm, r"...\modelos\svm_gravidade.pkl")
-joblib.dump(vec, r"...\modelos\tfidf_vectorizer.pkl")
-print("Modelos salvos.")
+# ── Salvar base com sentimentos ───────────────────────────────────────────────
+df.to_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_com_sentimentos.csv", index=False, encoding="utf-8")
+print("Arquivo salvo: corpus_com_sentimentos.csv")

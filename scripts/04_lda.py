@@ -1,4 +1,5 @@
 import ast
+import os
 import pandas as pd
 import gensim
 from gensim import corpora, models
@@ -8,7 +9,6 @@ import pyLDAvis.gensim_models
 
 df = pd.read_csv(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\dados\corpus_preprocessado.csv", encoding="utf-8")
 
-# Reconstruir tokens como lista
 df["tokens"] = df["tokens"].apply(
     lambda x: ast.literal_eval(x) if isinstance(x, str) else x
 )
@@ -18,19 +18,13 @@ dicionario = corpora.Dictionary(textos)
 dicionario.filter_extremes(no_below=2, no_above=0.9)
 corpus_bow = [dicionario.doc2bow(texto) for texto in textos]
 
-# ← OBRIGATÓRIO NO WINDOWS: todo código que usa multiprocessing
-# precisa estar dentro deste bloco
 if __name__ == '__main__':
 
-    import os
-    os.makedirs(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos", exist_ok=True)
-
-    lda_final.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_modelo")
-    dicionario.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_dicionario")
-    print("Modelos LDA salvos.")
-
     # Testar diferentes números de tópicos
-    for n in [3, 4, 5, 6, 7, 8, 9, 10]:
+    melhor_n = 3
+    melhor_cv = 0
+
+    for n in [3, 4, 5]:
         lda = models.LdaModel(
             corpus_bow,
             num_topics=n,
@@ -44,22 +38,37 @@ if __name__ == '__main__':
             dictionary=dicionario,
             coherence="c_v"
         )
-        print(f"Tópicos: {n} | Coerência C_v: {coerencia.get_coherence():.4f}")
+        cv = coerencia.get_coherence()
+        print(f"Tópicos: {n} | Coerência C_v: {cv:.4f}")
 
-    # Treinar modelo final
+        if cv > melhor_cv:
+            melhor_cv = cv
+            melhor_n = n
+
+    print(f"\nMelhor número de tópicos: {melhor_n} (C_v: {melhor_cv:.4f})")
+
+    # Treinar modelo final com o melhor número
     lda_final = models.LdaModel(
         corpus_bow,
-        num_topics=4,
+        num_topics=melhor_n,
         id2word=dicionario,
         passes=20,
         random_state=42
     )
 
     # Exibir tópicos
+    print("\n--- Tópicos encontrados ---")
     for i, topico in lda_final.print_topics(num_words=8):
         print(f"\nTópico {i}: {topico}")
 
+    # Salvar modelos
+    os.makedirs(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos", exist_ok=True)
+    lda_final.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_modelo")
+    dicionario.save(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\modelos\lda_dicionario")
+    print("\nModelos LDA salvos em modelos/")
+
     # Visualização interativa
+    os.makedirs(r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\resultados", exist_ok=True)
     vis = pyLDAvis.gensim_models.prepare(lda_final, corpus_bow, dicionario)
     pyLDAvis.save_html(vis, r"c:\Users\vinil\Documents\Projeto_IC\Pipeline\resultados\lda_visualizacao.html")
-    print("\nVisualização salva em resultados/lda_visualizacao.html")
+    print("Visualização salva em resultados/lda_visualizacao.html")
